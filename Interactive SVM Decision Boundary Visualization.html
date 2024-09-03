@@ -1,0 +1,223 @@
+<html><head><base href="https://www.example.com/svm-visualization/" target="_blank"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Interactive SVM Decision Boundary Visualization</title><script src="https://cdn.plot.ly/plotly-latest.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script><style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f0f0f0;
+    }
+    h1, h2 {
+        color: #333;
+    }
+    .plot-container {
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    #controls {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .control-group {
+        display: flex;
+        flex-direction: column;
+    }
+    label {
+        margin-bottom: 5px;
+    }
+    input[type="range"] {
+        width: 200px;
+    }
+    #info {
+        background-color: #e0f0ff;
+        border-radius: 5px;
+        padding: 10px;
+        margin-top: 20px;
+    }
+</style></head><body>
+
+<h1>Interactive SVM Decision Boundary Visualization</h1>
+<p>Explore how different parameters affect the Support Vector Machine (SVM) decision boundary with RBF kernel in 2D and 3D visualizations.</p>
+
+<div id="controls">
+    <div class="control-group">
+        <label for="gamma">Gamma (RBF kernel parameter):</label>
+        <input type="range" id="gamma" min="0.1" max="2" step="0.1" value="0.1">
+        <span id="gamma-value">0.1</span>
+    </div>
+    <div class="control-group">
+        <label for="noise">Noise Level:</label>
+        <input type="range" id="noise" min="0" max="1" step="0.1" value="0">
+        <span id="noise-value">0</span>
+    </div>
+    <div class="control-group">
+        <label for="samples">Number of Samples:</label>
+        <input type="range" id="samples" min="50" max="500" step="50" value="100">
+        <span id="samples-value">100</span>
+    </div>
+</div>
+
+<div class="plot-container">
+    <h2>2D SVM Decision Boundary</h2>
+    <div id="2d-plot" style="width:100%; height:400px;"></div>
+</div>
+
+<div class="plot-container">
+    <h2>3D SVM Decision Boundary</h2>
+    <div id="3d-plot" style="width:100%; height:500px;"></div>
+</div>
+
+<div id="info">
+    <h3>How it works:</h3>
+    <p>This visualization demonstrates a Support Vector Machine (SVM) with a Radial Basis Function (RBF) kernel. The decision boundary separates two classes of data points.</p>
+    <ul>
+        <li><strong>Gamma:</strong> Controls the influence of each training example. Higher values lead to more complex boundaries.</li>
+        <li><strong>Noise:</strong> Adds random perturbations to the data points, simulating real-world data imperfections.</li>
+        <li><strong>Samples:</strong> Adjusts the number of data points generated for each class.</li>
+    </ul>
+    <p>Experiment with these parameters to see how they affect the SVM's decision boundary!</p>
+</div>
+
+<script>
+// Initialize plot data
+let centerGroup2D, outerGroup2D, centerGroup3D, outerGroup3D, surface;
+
+// Function to generate data points
+function generateData(numSamples, noise) {
+    const centerGroup = {
+        x: [],
+        y: [],
+        z: [],
+        mode: 'markers',
+        type: 'scatter3d',
+        marker: { color: 'blue', size: 5 },
+        name: 'Center Group'
+    };
+    
+    const outerGroup = {
+        x: [],
+        y: [],
+        z: [],
+        mode: 'markers',
+        type: 'scatter3d',
+        marker: { color: 'red', size: 5 },
+        name: 'Outer Group'
+    };
+
+    for (let i = 0; i < numSamples; i++) {
+        // Center group
+        let r = Math.sqrt(Math.random()) * 0.5;
+        let theta = Math.random() * 2 * Math.PI;
+        centerGroup.x.push(r * Math.cos(theta) + noise * (Math.random() - 0.5));
+        centerGroup.y.push(r * Math.sin(theta) + noise * (Math.random() - 0.5));
+        centerGroup.z.push(0);
+
+        // Outer group
+        r = 4 + Math.random();
+        theta = Math.random() * 2 * Math.PI;
+        outerGroup.x.push(r * Math.cos(theta) + noise * (Math.random() - 0.5));
+        outerGroup.y.push(r * Math.sin(theta) + noise * (Math.random() - 0.5));
+        outerGroup.z.push(0);
+    }
+
+    return [centerGroup, outerGroup];
+}
+
+// Function to create decision boundary surface
+function createSurface(gamma) {
+    const xx = math.range(-6, 6, 0.1).toArray();
+    const yy = math.range(-6, 6, 0.1).toArray();
+    const Z = xx.map(x => yy.map(y => Math.exp(-gamma * ((x ** 2) + (y ** 2)))));
+
+    return {
+        x: xx,
+        y: yy,
+        z: Z,
+        type: 'surface',
+        colorscale: 'Greens',
+        opacity: 0.7,
+        showscale: false,
+        name: 'Decision Boundary'
+    };
+}
+
+// Function to update plots
+function updatePlots() {
+    const gamma = parseFloat(document.getElementById('gamma').value);
+    const noise = parseFloat(document.getElementById('noise').value);
+    const numSamples = parseInt(document.getElementById('samples').value);
+
+    document.getElementById('gamma-value').textContent = gamma.toFixed(1);
+    document.getElementById('noise-value').textContent = noise.toFixed(1);
+    document.getElementById('samples-value').textContent = numSamples;
+
+    const [centerGroup, outerGroup] = generateData(numSamples, noise);
+    
+    // Update 2D plot
+    centerGroup2D = {
+        x: centerGroup.x,
+        y: centerGroup.y,
+        mode: 'markers',
+        type: 'scatter',
+        marker: { color: 'blue', size: 8 },
+        name: 'Center Group'
+    };
+    outerGroup2D = {
+        x: outerGroup.x,
+        y: outerGroup.y,
+        mode: 'markers',
+        type: 'scatter',
+        marker: { color: 'red', size: 8 },
+        name: 'Outer Group'
+    };
+
+    const contourData = createSurface(gamma);
+    const contour = {
+        x: contourData.x,
+        y: contourData.y,
+        z: contourData.z,
+        type: 'contour',
+        colorscale: 'Greens',
+        opacity: 0.5,
+        showscale: false,
+        contours: {
+            start: 0.5,
+            end: 0.5,
+            size: 0.5
+        }
+    };
+
+    Plotly.react('2d-plot', [centerGroup2D, outerGroup2D, contour], {
+        title: '2D SVM Decision Boundary',
+        xaxis: { title: 'X-axis', range: [-6, 6] },
+        yaxis: { title: 'Y-axis', range: [-6, 6] }
+    });
+
+    // Update 3D plot
+    centerGroup3D = centerGroup;
+    outerGroup3D = outerGroup;
+    surface = createSurface(gamma);
+
+    Plotly.react('3d-plot', [centerGroup3D, outerGroup3D, surface], {
+        scene: {
+            xaxis: { title: 'X-axis', range: [-6, 6] },
+            yaxis: { title: 'Y-axis', range: [-6, 6] },
+            zaxis: { title: 'Kernel Mapped Z-axis', range: [0, 1] }
+        },
+        title: '3D SVM Decision Boundary with RBF Kernel'
+    });
+}
+
+// Initialize plots
+updatePlots();
+
+// Add event listeners to controls
+document.getElementById('gamma').addEventListener('input', updatePlots);
+document.getElementById('noise').addEventListener('input', updatePlots);
+document.getElementById('samples').addEventListener('input', updatePlots);
+</script>
+
+</body></html>
